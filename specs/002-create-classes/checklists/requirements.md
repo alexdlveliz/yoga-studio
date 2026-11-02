@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Create Classes
+# Specification Quality Checklist: Create and Edit Classes
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-11-01
@@ -31,5 +31,5 @@
 
 ## Notes
 
-- Validation passed. Success criteria are targets to verify during implementation and acceptance.
+- Revalidated 2026-11-02 for editing and the student-limit restriction. Success criteria are targets to verify during implementation and acceptance.
 - Items marked incomplete require spec updates before `$speckit-clarify` or `$speckit-plan`.
