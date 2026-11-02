@@ -1,0 +1,321 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-02T17:59:25.440753+00:00",
+  "title": "Design System: Yoga Studio",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#263b46",
+        "tonalRamp": [
+          "oklch(15% 0.02 230)",
+          "oklch(25% 0.04 230)",
+          "oklch(35% 0.06 230)",
+          "oklch(45% 0.07 230)",
+          "oklch(55% 0.07 230)",
+          "oklch(70% 0.05 230)",
+          "oklch(85% 0.03 230)",
+          "oklch(95% 0.01 230)"
+        ]
+      },
+      "ground": {
+        "role": "neutral",
+        "displayName": "Warm Ground",
+        "canonical": "#f4eee2",
+        "tonalRamp": [
+          "oklch(15% 0.02 85)",
+          "oklch(25% 0.04 85)",
+          "oklch(35% 0.06 85)",
+          "oklch(45% 0.07 85)",
+          "oklch(55% 0.07 85)",
+          "oklch(70% 0.05 85)",
+          "oklch(85% 0.03 85)",
+          "oklch(95% 0.01 85)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#fff",
+        "tonalRamp": [
+          "oklch(15% 0.02 90)",
+          "oklch(25% 0.04 90)",
+          "oklch(35% 0.06 90)",
+          "oklch(45% 0.07 90)",
+          "oklch(55% 0.07 90)",
+          "oklch(70% 0.05 90)",
+          "oklch(85% 0.03 90)",
+          "oklch(95% 0.01 90)"
+        ]
+      },
+      "clay": {
+        "role": "primary",
+        "displayName": "Studio Clay",
+        "canonical": "#a64e37",
+        "tonalRamp": [
+          "oklch(15% 0.02 35)",
+          "oklch(25% 0.04 35)",
+          "oklch(35% 0.06 35)",
+          "oklch(45% 0.07 35)",
+          "oklch(55% 0.07 35)",
+          "oklch(70% 0.05 35)",
+          "oklch(85% 0.03 35)",
+          "oklch(95% 0.01 35)"
+        ]
+      },
+      "clay-deep": {
+        "role": "primary",
+        "displayName": "Deep Clay",
+        "canonical": "#873d2b",
+        "tonalRamp": [
+          "oklch(15% 0.02 35)",
+          "oklch(25% 0.04 35)",
+          "oklch(35% 0.06 35)",
+          "oklch(45% 0.07 35)",
+          "oklch(55% 0.07 35)",
+          "oklch(70% 0.05 35)",
+          "oklch(85% 0.03 35)",
+          "oklch(95% 0.01 35)"
+        ]
+      },
+      "link": {
+        "role": "neutral",
+        "displayName": "Deep Green Link",
+        "canonical": "#244d4c",
+        "tonalRamp": [
+          "oklch(15% 0.02 180)",
+          "oklch(25% 0.04 180)",
+          "oklch(35% 0.06 180)",
+          "oklch(45% 0.07 180)",
+          "oklch(55% 0.07 180)",
+          "oklch(70% 0.05 180)",
+          "oklch(85% 0.03 180)",
+          "oklch(95% 0.01 180)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Sage Ink",
+        "canonical": "#526768",
+        "tonalRamp": [
+          "oklch(15% 0.02 190)",
+          "oklch(25% 0.04 190)",
+          "oklch(35% 0.06 190)",
+          "oklch(45% 0.07 190)",
+          "oklch(55% 0.07 190)",
+          "oklch(70% 0.05 190)",
+          "oklch(85% 0.03 190)",
+          "oklch(95% 0.01 190)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Soft Line",
+        "canonical": "#cad3cc",
+        "tonalRamp": [
+          "oklch(15% 0.02 150)",
+          "oklch(25% 0.04 150)",
+          "oklch(35% 0.06 150)",
+          "oklch(45% 0.07 150)",
+          "oklch(55% 0.07 150)",
+          "oklch(70% 0.05 150)",
+          "oklch(85% 0.03 150)",
+          "oklch(95% 0.01 150)"
+        ]
+      },
+      "divider": {
+        "role": "neutral",
+        "displayName": "Divider",
+        "canonical": "#dce2dc",
+        "tonalRamp": [
+          "oklch(15% 0.02 150)",
+          "oklch(25% 0.04 150)",
+          "oklch(35% 0.06 150)",
+          "oklch(45% 0.07 150)",
+          "oklch(55% 0.07 150)",
+          "oklch(70% 0.05 150)",
+          "oklch(85% 0.03 150)",
+          "oklch(95% 0.01 150)"
+        ]
+      },
+      "sage": {
+        "role": "neutral",
+        "displayName": "Sage",
+        "canonical": "#e2ebe3",
+        "tonalRamp": [
+          "oklch(15% 0.02 150)",
+          "oklch(25% 0.04 150)",
+          "oklch(35% 0.06 150)",
+          "oklch(45% 0.07 150)",
+          "oklch(55% 0.07 150)",
+          "oklch(70% 0.05 150)",
+          "oklch(85% 0.03 150)",
+          "oklch(95% 0.01 150)"
+        ]
+      },
+      "amber": {
+        "role": "neutral",
+        "displayName": "Amber",
+        "canonical": "#fff0d9",
+        "tonalRamp": [
+          "oklch(15% 0.02 75)",
+          "oklch(25% 0.04 75)",
+          "oklch(35% 0.06 75)",
+          "oklch(45% 0.07 75)",
+          "oklch(55% 0.07 75)",
+          "oklch(70% 0.05 75)",
+          "oklch(85% 0.03 75)",
+          "oklch(95% 0.01 75)"
+        ]
+      },
+      "warning-line": {
+        "role": "neutral",
+        "displayName": "Warning Line",
+        "canonical": "#a45b24",
+        "tonalRamp": [
+          "oklch(15% 0.02 55)",
+          "oklch(25% 0.04 55)",
+          "oklch(35% 0.06 55)",
+          "oklch(45% 0.07 55)",
+          "oklch(55% 0.07 55)",
+          "oklch(70% 0.05 55)",
+          "oklch(85% 0.03 55)",
+          "oklch(95% 0.01 55)"
+        ]
+      },
+      "error": {
+        "role": "neutral",
+        "displayName": "Error",
+        "canonical": "#a02d24",
+        "tonalRamp": [
+          "oklch(15% 0.02 25)",
+          "oklch(25% 0.04 25)",
+          "oklch(35% 0.06 25)",
+          "oklch(45% 0.07 25)",
+          "oklch(55% 0.07 25)",
+          "oklch(70% 0.05 25)",
+          "oklch(85% 0.03 25)",
+          "oklch(95% 0.01 25)"
+        ]
+      },
+      "error-ground": {
+        "role": "neutral",
+        "displayName": "Error Ground",
+        "canonical": "#fff0e9",
+        "tonalRamp": [
+          "oklch(15% 0.02 35)",
+          "oklch(25% 0.04 35)",
+          "oklch(35% 0.06 35)",
+          "oklch(45% 0.07 35)",
+          "oklch(55% 0.07 35)",
+          "oklch(70% 0.05 35)",
+          "oklch(85% 0.03 35)",
+          "oklch(95% 0.01 35)"
+        ]
+      },
+      "readonly": {
+        "role": "neutral",
+        "displayName": "Readonly",
+        "canonical": "#edf0eb",
+        "tonalRamp": [
+          "oklch(15% 0.02 140)",
+          "oklch(25% 0.04 140)",
+          "oklch(35% 0.06 140)",
+          "oklch(45% 0.07 140)",
+          "oklch(55% 0.07 140)",
+          "oklch(70% 0.05 140)",
+          "oklch(85% 0.03 140)",
+          "oklch(95% 0.01 140)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Interface and class details."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Day names and controls."
+      }
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": [
+      {
+        "name": "calendar-wrap",
+        "value": "1000px"
+      },
+      {
+        "name": "mobile",
+        "value": "600px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The main action in a view.",
+      "html": "<button class=\"ds-primary\">Nueva clase</button>",
+      "css": ".ds-primary{min-height:46px;padding:11px 16px;border:1px solid #a64e37;border-radius:5px;background:#a64e37;color:#fff;font:600 14px Avenir Next,Avenir,Segoe UI,sans-serif;cursor:pointer}.ds-primary:hover{background:#873d2b}.ds-primary:focus-visible{outline:3px solid #a64e37;outline-offset:3px}"
+    },
+    {
+      "name": "Secondary button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Navigation and secondary actions.",
+      "html": "<button class=\"ds-secondary\">\u2190 Semana anterior</button>",
+      "css": ".ds-secondary{min-height:46px;padding:11px 16px;border:1px solid #80908c;border-radius:5px;background:transparent;color:#263b46;font:600 14px Avenir Next,Avenir,Segoe UI,sans-serif;cursor:pointer}.ds-secondary:hover{background:#e5e8dd}.ds-secondary:focus-visible{outline:3px solid #a64e37;outline-offset:3px}"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Labeled form input.",
+      "html": "<label class=\"ds-label\" for=\"ds-title\">T\u00edtulo</label><input class=\"ds-field\" id=\"ds-title\" type=\"text\">",
+      "css": ".ds-label{display:block;font:700 16px Avenir Next,Avenir,Segoe UI,sans-serif;margin-bottom:8px;color:#263b46}.ds-field{width:100%;min-height:46px;padding:10px 12px;border:1px solid #899e98;border-radius:4px;background:#fff;color:#263b46;font:16px Avenir Next,Avenir,Segoe UI,sans-serif}.ds-field:focus-visible{outline:3px solid #a64e37;outline-offset:3px}"
+    },
+    {
+      "name": "Class card",
+      "kind": "card",
+      "refersTo": "class-card",
+      "description": "A scheduled class within a day.",
+      "html": "<article class=\"ds-card\"><p class=\"ds-time\">09:00</p><strong>Yoga</strong><p>Profesora</p><p>L\u00edmite: 12</p><a href=\"#\">Editar \u2192</a></article>",
+      "css": ".ds-card{background:#e2ebe3;padding:14px 12px;color:#263b46;font:14px/1.4 Avenir Next,Avenir,Segoe UI,sans-serif}.ds-card strong{display:block;font-size:16px}.ds-card p{margin:8px 0;color:#435d5a}.ds-card .ds-time{font-weight:700;color:#263b46;margin:0 0 8px;font-variant-numeric:tabular-nums}.ds-card a{color:#244d4c;font-weight:700;text-underline-offset:3px}.ds-card a:focus-visible{outline:3px solid #a64e37;outline-offset:3px}"
+    },
+    {
+      "name": "Header",
+      "kind": "nav",
+      "description": "Studio identity and context.",
+      "html": "<header class=\"ds-header\"><a href=\"#\">Yoga Studio</a><span>Horario del estudio</span></header>",
+      "css": ".ds-header{background:#263b46;color:#dce5e2;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 32px;font:14px Avenir Next,Avenir,Segoe UI,sans-serif}.ds-header a{color:#fff;font-size:21px;font-weight:700;letter-spacing:-.02em;text-decoration:none}.ds-header a:focus-visible{outline:3px solid #a64e37;outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Studio Program",
+    "overview": "A calm, practical studio program gives the owner a clear view of the week. A dark ink header and warm ground frame paper-like working surfaces; typography and quiet color provide character while controls remain easy to find.\n\nThe interface is an Operate surface: scanability, consistent controls, and clear states guide routine work. Its Spanish copy should remain direct and useful.",
+    "keyCharacteristics": [
+      "Ink header over a warm ground and white working surfaces.",
+      "Day columns and softly colored class entries organize the schedule.",
+      "Serif headings pair with a straightforward sans-serif interface.",
+      "Flat surfaces, fine rules, and clear focus states keep attention on the task."
+    ],
+    "rules": [],
+    "dos": [
+      "Do make the current schedule and primary action easy to scan.",
+      "Do pair status colors with explicit text, as in the missing-teacher state.",
+      "Do preserve visible keyboard focus on interactive controls."
+    ],
+    "donts": [
+      "Don't add shadows to ordinary surfaces; use borders and tonal grouping.",
+      "Don't rely on color alone to communicate a class or field state."
+    ]
+  }
+}
