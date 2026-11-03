@@ -1,8 +1,19 @@
 import {it,expect} from 'vitest';
-import {mkdtempSync} from 'node:fs'; import {tmpdir} from 'node:os'; import {join} from 'node:path';
-import {initializeDatabase} from '../src/db.js'; import {createApp} from '../src/app.js';
-async function request(path:string, db:string) {const server=createApp({dbPath:db,locale:'en-US'}).listen(0,'127.0.0.1'); await new Promise<void>(r=>server.once('listening',r)); try { const address=server.address(); if (!address || typeof address==='string') throw Error(); const res=await fetch(`http://127.0.0.1:${address.port}${path}`); return {status:res.status,body:await res.text(),cache:res.headers.get('cache-control')}; } finally {server.close();}}
-it('renders normalized week and links without javascript',async()=>{const p=join(mkdtempSync(join(tmpdir(),'studio-')),'db');initializeDatabase(p);const res=await request('/?week=2025-01-01',p);expect(res.status).toBe(200);expect(res.body).toContain('2024-12-29');expect(res.body).toContain('2025-01-04');expect(res.body).toContain('week=2024-12-22');expect(res.body).toContain('week=2025-01-05');expect(res.body).toContain('No hay clases');expect(res.body).not.toContain('<script');expect(res.cache).toContain('no-store');});
-it('rejects invalid dates',async()=>{const p=join(mkdtempSync(join(tmpdir(),'studio-')),'db');initializeDatabase(p);expect((await request('/?week=2025-02-29',p)).status).toBe(400);});
-it('reports inaccessible storage without the empty state',async()=>{const res=await request('/',join(mkdtempSync(join(tmpdir(),'studio-')),'missing'));expect(res.status).toBe(503);expect(res.body).toContain('Inténtalo de nuevo');expect(res.body).not.toContain('No hay clases');});
-it('renders the current local week on opening',async()=>{const {localToday,weekFor}=await import('../src/schedule.js');const p=join(mkdtempSync(join(tmpdir(),'studio-')),'db');initializeDatabase(p);const res=await request('/',p);expect(res.status).toBe(200);for(const day of weekFor(localToday(),'en-US').dates)expect(res.body).toContain(`datetime="${day}"`);expect(res.body).toContain('No hay clases');});
+import {fixture,start} from './helpers.js';
+import {localToday,weekFor} from '../src/schedule.js';
+it('renders the normalized Spanish week, navigation, demo notice and static stylesheet',async()=>{
+ const f=await fixture(),app=await start(f.url);try{
+ const res=await fetch(app.base+'/?week=2025-01-01'),html=await res.text();expect(res.status).toBe(200);
+ for(const text of ['2024-12-29','2025-01-04','week=2024-12-22','week=2025-01-05','No hay clases','Demostración pública','datos ficticios'])expect(html).toContain(text);
+ expect(html).not.toContain('<script');expect(res.headers.get('cache-control')).toContain('no-store');
+ expect((await fetch(app.base+'/static/styles.css')).status).toBe(200);
+ }finally{await app.stop();}
+});
+it('rejects invalid and repeated week parameters',async()=>{const f=await fixture(),app=await start(f.url);try{for(const query of ['2025-02-29','bad','2025-01-01&week=2025-01-02'])expect((await fetch(app.base+'/?week='+query)).status).toBe(400);}finally{await app.stop();}});
+it('opens the current studio week',async()=>{const f=await fixture(),app=await start(f.url);try{const html=await(await fetch(app.base)).text();for(const day of weekFor(localToday(),'en-US').dates)expect(html).toContain(`datetime="${day}"`);}finally{await app.stop();}});
+it('returns Spanish errors for unknown routes and malformed form encodings',async()=>{
+ const f=await fixture(),app=await start(f.url);try{
+ let res=await fetch(app.base+'/missing');expect(res.status).toBe(404);expect(await res.text()).toContain('Página no encontrada');
+ res=await fetch(app.base+'/classes',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded; charset=bad'},body:'title=bad'});expect(res.status).toBe(400);const html=await res.text();expect(html).toContain('solicitud');expect(html).not.toContain('UnsupportedMediaTypeError');expect(html).not.toContain('node_modules');
+ }finally{await app.stop();}
+});

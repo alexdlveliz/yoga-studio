@@ -1,2 +1,2 @@
-import { initializeDatabase } from './db.js';
-try { initializeDatabase(); console.log('Database initialized.'); } catch (error) { console.error('Database initialization failed:', error instanceof Error ? error.message : error); process.exitCode = 1; }
+import {initializeDatabase} from './db.js';
+try {await initializeDatabase();console.log('Base de datos preparada.');} catch {console.error('No se pudo preparar la base de datos. Revisa la conexión, los permisos y la configuración.');process.exitCode=1;}

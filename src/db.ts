@@ -1,44 +1,81 @@
-import Database from 'better-sqlite3';
-import { closeSync, mkdirSync, openSync, unlinkSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import {Pool, type PoolClient} from 'pg';
 
-export function databasePath(): string { return resolve(process.env.STUDIO_DB_PATH || 'data/studio.sqlite'); }
-export function initializeDatabase(path = databasePath()): void {
-  mkdirSync(dirname(path), { recursive: true });
-  const fd = openSync(path, 'wx'); closeSync(fd);
-  try {
-    const db = new Database(path, { fileMustExist: true });
-    try { db.transaction(() => { db.exec("CREATE TABLE metadata (key TEXT PRIMARY KEY NOT NULL CHECK (typeof(key) = 'text' AND length(key) > 0), value TEXT NOT NULL CHECK (typeof(value) = 'text'))"); createClassSchema(db); db.pragma('user_version = 2'); })(); } finally { db.close(); }
-  } catch (error) { unlinkSync(path); throw error; }
+export function databaseUrl(): string {
+ const url=process.env.DATABASE_URL;
+ if(!url)throw new Error('DATABASE_URL is required');
+ return url;
 }
-function createClassSchema(db: Database.Database): void {
-  db.exec(`CREATE TABLE classes (id TEXT PRIMARY KEY NOT NULL, submission_token TEXT NOT NULL UNIQUE, title TEXT NOT NULL, date TEXT NOT NULL, time TEXT NOT NULL, student_limit INTEGER NOT NULL CHECK(student_limit > 0), teacher TEXT);
-    CREATE INDEX classes_date ON classes(date);
-    CREATE TABLE registrations (id INTEGER PRIMARY KEY, class_id TEXT NOT NULL REFERENCES classes(id), student_id TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('assigned','waitlisted')), UNIQUE(class_id, student_id));`);
+// Reuse a small pool per warm function. Unnamed queries work with Supavisor transaction pooling.
+const pools=new Map<string,Pool>();
+export function openDatabase(url=databaseUrl()):Pool {
+ let pool=pools.get(url);
+ if(!pool){
+  const parsed=new URL(url);
+  const local=['localhost','127.0.0.1','[::1]'].includes(parsed.hostname);
+  // URL SSL parameters must not override certificate verification.
+  for(const key of ['sslmode','sslcert','sslkey','sslrootcert'])parsed.searchParams.delete(key);
+  pool=new Pool({connectionString:parsed.toString(),max:2,connectionTimeoutMillis:5000,idleTimeoutMillis:1000,allowExitOnIdle:true,
+   ssl:local?false:{rejectUnauthorized:true,...(process.env.DATABASE_CA_CERT?{ca:process.env.DATABASE_CA_CERT}:{})}});
+  pool.on('error',()=>{ /* Idle connection errors recover on the next request; never log credentials. */ });
+  pools.set(url,pool);
+ }
+ return pool;
 }
-export function migrateDatabase(path = databasePath()): void {
- const db = new Database(path, {fileMustExist:true});
- try { db.transaction(() => { validateMetadata(db); if (db.pragma('user_version', {simple:true}) !== 1) throw new Error('Incompatible database version'); createClassSchema(db); db.pragma('user_version = 2'); })(); } finally { db.close(); }
+export async function transaction<T>(url:string,work:(client:PoolClient)=>Promise<T>):Promise<T>{
+ const client=await openDatabase(url).connect();
+ try{await client.query('BEGIN');const value=await work(client);await client.query('COMMIT');return value;}
+ catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
 }
-function validateMetadata(db: Database.Database): void {
-
-    const columns = db.pragma('table_info(metadata)') as {name:string; type:string; notnull:number; pk:number}[];
-    if (columns.length !== 2 || columns[0]?.name !== 'key' || columns[0]?.type.toUpperCase() !== 'TEXT' || columns[0]?.notnull !== 1 || columns[0]?.pk !== 1 || columns[1]?.name !== 'value' || columns[1]?.type.toUpperCase() !== 'TEXT' || columns[1]?.notnull !== 1) throw new Error('Incompatible database schema');
-    const schema = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'metadata'").get() as {sql: string} | undefined;
-    const definition = schema?.sql.toLowerCase().replace(/\s+/g, ' ') ?? '';
-    if (!/check\s*\(\s*typeof\s*\(\s*key\s*\)\s*=\s*'text'\s+and\s+length\s*\(\s*key\s*\)\s*>\s*0\s*\)/.test(definition) || !/check\s*\(\s*typeof\s*\(\s*value\s*\)\s*=\s*'text'\s*\)/.test(definition)) throw new Error('Incompatible database constraints');
-    db.prepare('SELECT key, value FROM metadata LIMIT 1').all();
+const definitions:Record<string,string>={
+ schema_version:'version INTEGER PRIMARY KEY CHECK(version=1)',
+ metadata:'key TEXT PRIMARY KEY CHECK(length(key)>0),value TEXT NOT NULL',
+ classes:`id TEXT PRIMARY KEY,submission_token TEXT NOT NULL UNIQUE,title TEXT NOT NULL,
+ date TEXT NOT NULL CHECK(date ~ '^\\d{4}-\\d{2}-\\d{2}$'),time TEXT NOT NULL CHECK(time ~ '^([01]\\d|2[0-3]):[0-5]\\d$'),
+ student_limit BIGINT NOT NULL CHECK(student_limit>0 AND student_limit<=9007199254740991),teacher TEXT`,
+ registrations:`id BIGSERIAL PRIMARY KEY,class_id TEXT NOT NULL REFERENCES yoga_studio.classes(id),
+ student_id TEXT NOT NULL,status TEXT NOT NULL CHECK(status IN ('assigned','waitlisted')),UNIQUE(class_id,student_id)`
+};
+async function schemaSignature(db:PoolClient,relation:string){
+ const columns=(await db.query(`SELECT attname,format_type(atttypid,atttypmod) AS type,attnotnull
+ FROM pg_attribute WHERE attrelid=to_regclass($1) AND attnum>0 AND NOT attisdropped ORDER BY attnum`,[relation])).rows;
+ const constraints=(await db.query(`SELECT pg_get_constraintdef(oid) AS definition,condeferrable,condeferred,convalidated
+ FROM pg_constraint WHERE conrelid=to_regclass($1) ORDER BY pg_get_constraintdef(oid)`,[relation])).rows;
+ return JSON.stringify({columns,constraints}).replaceAll('yoga_studio.','').replaceAll('_studio_expected_','');
 }
-export function openDatabase(path = databasePath()): Database.Database {
- const db = new Database(path, {fileMustExist:true});
- try {
-  db.pragma('foreign_keys = ON');
-  if (db.pragma('user_version', {simple:true}) !== 2) throw new Error('Incompatible database version');
-  validateMetadata(db);
-  db.prepare('SELECT id, submission_token, title, date, time, student_limit, teacher FROM classes LIMIT 0').all();
-  db.prepare('SELECT id, class_id, student_id, status FROM registrations LIMIT 0').all();
-  return db;
- } catch (error) { db.close(); throw error; }
+async function validateSchema(db:PoolClient){
+ // Build a transactional reference from the same definitions; compare actual types,
+ // nullability and constraints without depending on PostgreSQL's formatting/version.
+ for(const [name,definition] of Object.entries(definitions)){
+  await db.query(`CREATE TEMP TABLE _studio_expected_${name} (${definition.replaceAll('yoga_studio.classes','_studio_expected_classes')}) ON COMMIT DROP`);
+  if(await schemaSignature(db,'yoga_studio.'+name)!==await schemaSignature(db,'pg_temp._studio_expected_'+name))throw new Error('Incompatible database schema');
+ }
+ const versions=(await db.query('SELECT version FROM yoga_studio.schema_version')).rows;
+ if(versions.length!==1||versions[0].version!==1)throw new Error('Unsupported database version');
 }
-export function readMetadata(path: string, key: string): string | undefined { const db = openDatabase(path); try { return (db.prepare('SELECT value FROM metadata WHERE key = ?').get(key) as {value:string} | undefined)?.value; } finally { db.close(); } }
-export function writeMetadata(path: string, entries: [string, string][]): void { const db = openDatabase(path); try { db.transaction(() => { const statement = db.prepare('INSERT INTO metadata (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'); for (const [key, value] of entries) statement.run(key, value); })(); } finally { db.close(); } }
+export async function initializeDatabase(url=process.env.DIRECT_DATABASE_URL || databaseUrl()):Promise<void>{
+ await transaction(url,async db=>{
+  await db.query('SELECT pg_advisory_xact_lock(9462003)');
+  const exists=(await db.query("SELECT to_regnamespace('yoga_studio') IS NOT NULL AS present")).rows[0].present;
+  if(exists)await validateSchema(db);
+  else{
+   await db.query('CREATE SCHEMA yoga_studio');
+   for(const [name,definition] of Object.entries(definitions))await db.query(`CREATE TABLE yoga_studio.${name} (${definition})`);
+   await db.query('INSERT INTO yoga_studio.schema_version VALUES (1)');
+  }
+  await db.query(`CREATE INDEX IF NOT EXISTS classes_date ON yoga_studio.classes(date);
+   REVOKE ALL ON SCHEMA yoga_studio FROM PUBLIC;
+   REVOKE ALL ON ALL TABLES IN SCHEMA yoga_studio FROM PUBLIC;
+   REVOKE ALL ON ALL SEQUENCES IN SCHEMA yoga_studio FROM PUBLIC;
+   ALTER TABLE yoga_studio.metadata ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE yoga_studio.classes ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE yoga_studio.registrations ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE yoga_studio.schema_version ENABLE ROW LEVEL SECURITY;`);
+  // Future registration writes must serialize against class updates, too.
+  await db.query(`CREATE OR REPLACE FUNCTION yoga_studio.lock_registered_class() RETURNS trigger LANGUAGE plpgsql AS $$
+   BEGIN PERFORM id FROM yoga_studio.classes WHERE id=NEW.class_id FOR UPDATE; RETURN NEW; END $$;
+   CREATE OR REPLACE TRIGGER registration_class_lock BEFORE INSERT OR UPDATE ON yoga_studio.registrations
+   FOR EACH ROW EXECUTE FUNCTION yoga_studio.lock_registered_class();`);
+ });
+}
+export async function readMetadata(url:string,key:string):Promise<string|undefined>{return (await openDatabase(url).query('SELECT value FROM yoga_studio.metadata WHERE key=$1',[key])).rows[0]?.value;}
+export async function writeMetadata(url:string,entries:[string,string][]):Promise<void>{await transaction(url,async db=>{for(const [key,value] of entries)await db.query('INSERT INTO yoga_studio.metadata(key,value) VALUES ($1,$2) ON CONFLICT(key) DO UPDATE SET value=excluded.value',[key,value]);});}

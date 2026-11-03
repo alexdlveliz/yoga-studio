@@ -1,4 +1,4 @@
 import {it,expect} from 'vitest';
-import {mkdtempSync} from 'node:fs'; import {tmpdir} from 'node:os'; import {join} from 'node:path';
-import {initializeDatabase,writeMetadata,readMetadata} from '../src/db.js'; import {createApp} from '../src/app.js';
-it('revisiting the schedule retains existing metadata',async()=>{const p=join(mkdtempSync(join(tmpdir(),'studio-revisit-')),'db');initializeDatabase(p);writeMetadata(p,[['record','retained']]);const server=createApp({dbPath:p}).listen(0,'127.0.0.1');await new Promise<void>((resolve,reject)=>{server.once('listening',resolve);server.once('error',reject)});try{const a=server.address();if(!a||typeof a==='string')throw Error('No address');for(let visit=0;visit<2;visit++){const res=await fetch(`http://127.0.0.1:${a.port}/`,{headers:{connection:'close'}});expect(res.status).toBe(200);expect(await res.text()).toContain('No hay clases');expect(readMetadata(p,'record')).toBe('retained');}}finally{server.close();}});
+import {fixture,start,values} from './helpers.js';
+import {initializeDatabase} from '../src/db.js';
+it('retains shared classes across independent application instances and repeated setup',async()=>{const f=await fixture(),a=await start(f.url);const v=values();await a.post('/classes',v);await a.stop();await initializeDatabase(f.url);const b=await start(f.url);try{for(let i=0;i<2;i++){const res=await fetch(b.base+'/?week='+v.date);expect(res.status).toBe(200);expect(await res.text()).toContain('Yoga');}}finally{await b.stop();}});
