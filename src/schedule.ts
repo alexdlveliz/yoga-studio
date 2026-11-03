@@ -5,8 +5,12 @@ export function parseDate(value: string): Date | null {
 }
 function iso(date: Date): string { return date.toISOString().slice(0,10); }
 function add(date: Date, days: number): Date { const result=new Date(date); result.setUTCDate(result.getUTCDate()+days); return result; }
-export function localToday(): string { const d=new Date(); return `${d.getFullYear().toString().padStart(4,'0')}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`; }
+export function localToday(timeZone=process.env.STUDIO_TIMEZONE || 'America/Guatemala'): string {
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+ const value=(name:string)=>parts.find(p=>p.type===name)!.value;
+ return `${value('year')}-${value('month')}-${value('day')}`;
+}
 type WeekLocale = Intl.Locale & { getWeekInfo(): { firstDay: number } };
 function weekLocale(value: string): WeekLocale { return new Intl.Locale(value) as WeekLocale; }
-export function resolveLocale(value = process.env.STUDIO_LOCALE || Intl.DateTimeFormat().resolvedOptions().locale): string { try { const locale = weekLocale(value); if (typeof locale.getWeekInfo !== 'function') throw new Error('ICU week information unavailable'); locale.getWeekInfo(); return locale.toString(); } catch { console.warn(`Unable to resolve studio locale; falling back to en-US.`); return 'en-US'; } }
+export function resolveLocale(value = process.env.STUDIO_LOCALE || 'es-GT'): string { try { const locale = weekLocale(value); if (typeof locale.getWeekInfo !== 'function') throw new Error('ICU week information unavailable'); locale.getWeekInfo(); return locale.toString(); } catch { console.warn(`Unable to resolve studio locale; falling back to es-GT.`); return 'es-GT'; } }
 export function weekFor(value: string, locale: string) { const date=parseDate(value); if (!date) throw new Error('Invalid date'); const first=weekLocale(locale).getWeekInfo().firstDay % 7; const start=add(date,-((date.getUTCDay()-first+7)%7)); return {dates:Array.from({length:7},(_,i)=>iso(add(start,i))), previous:iso(add(start,-7)),next:iso(add(start,7))}; }

@@ -10,9 +10,27 @@ export function validateClass(input: ClassInput) {
  return {errors, value:{...input,title:input.title.trim()}};
 }
 import {randomUUID} from 'node:crypto';
-import {openDatabase} from './db.js';
+import {openDatabase,transaction} from './db.js';
 export type ClassRecord={id:string; title:string; date:string; time:string; student_limit:number; teacher:string|null};
-export function listClasses(path:string,start:string,end:string):ClassRecord[]{const db=openDatabase(path);try{return db.prepare('SELECT id,title,date,time,student_limit,teacher FROM classes WHERE date BETWEEN ? AND ? ORDER BY date,time,id').all(start,end) as ClassRecord[];}finally{db.close();}}
-export function getClass(path:string,id:string){const db=openDatabase(path);try{return db.prepare('SELECT *, EXISTS(SELECT 1 FROM registrations WHERE class_id=classes.id) AS registered FROM classes WHERE id=?').get(id) as (ClassRecord & {registered:number})|undefined;}finally{db.close();}}
-export function createClass(path:string,input:ClassInput,token:string):ClassRecord {const db=openDatabase(path);try{return db.transaction(()=>{const existing=db.prepare('SELECT * FROM classes WHERE submission_token=?').get(token) as ClassRecord|undefined;if(existing)return existing;const id=randomUUID();db.prepare('INSERT INTO classes (id,submission_token,title,date,time,student_limit,teacher) VALUES (?,?,?,?,?,?,?)').run(id,token,input.title,input.date,input.time,Number(input.studentLimit),input.teacher);return db.prepare('SELECT * FROM classes WHERE id=?').get(id) as ClassRecord;}).immediate();}finally{db.close();}}
-export function updateClass(path:string,id:string,input:ClassInput):'ok'|'missing'|'conflict'{const db=openDatabase(path);try{return db.transaction(()=>{const current=db.prepare('SELECT student_limit FROM classes WHERE id=?').get(id) as {student_limit:number}|undefined;if(!current)return 'missing' as const;if(current.student_limit!==Number(input.studentLimit)&&db.prepare('SELECT 1 FROM registrations WHERE class_id=? LIMIT 1').get(id))return 'conflict' as const;db.prepare('UPDATE classes SET title=?, date=?, time=?, student_limit=?, teacher=? WHERE id=?').run(input.title,input.date,input.time,Number(input.studentLimit),input.teacher,id);return 'ok' as const;}).immediate();}finally{db.close();}}
+const columns='id,title,date,time,student_limit::float8 AS student_limit,teacher';
+export async function listClasses(url:string,start:string,end:string):Promise<ClassRecord[]>{
+ return (await openDatabase(url).query(`SELECT ${columns} FROM yoga_studio.classes WHERE date BETWEEN $1 AND $2 ORDER BY date,time,id`,[start,end])).rows;
+}
+export async function getClass(url:string,id:string):Promise<(ClassRecord & {registered:boolean})|undefined>{
+ return (await openDatabase(url).query(`SELECT ${columns},EXISTS(SELECT 1 FROM yoga_studio.registrations WHERE class_id=classes.id) AS registered FROM yoga_studio.classes WHERE id=$1`,[id])).rows[0];
+}
+export async function createClass(url:string,input:ClassInput,token:string):Promise<ClassRecord>{
+ // The unique constraint serializes duplicates across independent function instances.
+ return (await openDatabase(url).query(`INSERT INTO yoga_studio.classes(id,submission_token,title,date,time,student_limit,teacher)
+ VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(submission_token) DO UPDATE SET submission_token=excluded.submission_token RETURNING ${columns}`,
+ [randomUUID(),token,input.title,input.date,input.time,Number(input.studentLimit),input.teacher])).rows[0];
+}
+export async function updateClass(url:string,id:string,input:ClassInput):Promise<'ok'|'missing'|'conflict'>{
+ return transaction(url,async db=>{
+  const current=(await db.query('SELECT student_limit::float8 AS student_limit FROM yoga_studio.classes WHERE id=$1 FOR UPDATE',[id])).rows[0];
+  if(!current)return 'missing';
+  if(current.student_limit!==Number(input.studentLimit)&&(await db.query('SELECT 1 FROM yoga_studio.registrations WHERE class_id=$1 LIMIT 1',[id])).rowCount)return 'conflict';
+  await db.query('UPDATE yoga_studio.classes SET title=$1,date=$2,time=$3,student_limit=$4,teacher=$5 WHERE id=$6',[input.title,input.date,input.time,Number(input.studentLimit),input.teacher,id]);
+  return 'ok';
+ });
+}

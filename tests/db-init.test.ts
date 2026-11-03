@@ -1,14 +1,35 @@
-import { describe, it, expect } from 'vitest';
-import { mkdtempSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import Database from 'better-sqlite3';
-import { initializeDatabase, openDatabase } from '../src/db.js';
-const path = () => join(mkdtempSync(join(tmpdir(), 'studio-')), 'studio.sqlite');
-describe('database initialization', () => {
- it('creates versioned schema and enforces metadata constraints', () => { const p = path(); initializeDatabase(p); const db = openDatabase(p); expect(db.pragma('user_version', {simple:true})).toBe(2); expect(() => db.prepare('INSERT INTO metadata VALUES (?, ?)').run('', 'x')).toThrow(); expect(() => db.prepare('INSERT INTO metadata VALUES (?, ?)').run('key', null)).toThrow(); db.close(); });
- it('never overwrites an existing file', () => { const p = path(); initializeDatabase(p); const before = readFileSync(p); expect(() => initializeDatabase(p)).toThrow(); expect(readFileSync(p)).toEqual(before); });
- it('does not create a missing database', () => { const p = path(); expect(() => openDatabase(p)).toThrow(); });
- it('rejects an incompatible schema', () => { const p=path(); const db=new Database(p); db.pragma('user_version = 2'); db.close(); expect(() => openDatabase(p)).toThrow(); });
+import {it,expect} from 'vitest';
+import {Pool} from 'pg';
+import {initializeDatabase} from '../src/db.js';
+import {fixture} from './helpers.js';
+it('initializes repeatedly and concurrently without losing existing records',async()=>{
+ const {url,query}=await fixture();
+ await query("INSERT INTO yoga_studio.metadata VALUES ('owner','kept')");
+ await Promise.all([initializeDatabase(url),initializeDatabase(url)]);
+ expect((await query('SELECT * FROM yoga_studio.metadata')).rows).toEqual([{key:'owner',value:'kept'}]);
 });
-it('rejects a versioned table missing metadata constraints',()=>{const p=path();const db=new Database(p);db.exec('CREATE TABLE metadata (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL); PRAGMA user_version=1');db.close();expect(()=>openDatabase(p)).toThrow();});
+it('enforces metadata, capacity, registration references, uniqueness and status constraints',async()=>{
+ const {query}=await fixture();
+ for(const sql of ["INSERT INTO yoga_studio.metadata VALUES ('','x')","INSERT INTO yoga_studio.metadata VALUES ('x',NULL)","INSERT INTO yoga_studio.registrations(class_id,student_id,status) VALUES ('missing','s','assigned')"]){await expect(query(sql)).rejects.toThrow();}
+});
+it('does not initialize storage as a side effect of reading',async()=>{
+ const f=await fixture(false); const pool=new Pool({connectionString:f.url});
+ try {expect((await pool.query("SELECT to_regclass('yoga_studio.classes') AS name")).rows[0].name).toBeNull();}finally{await pool.end();}
+});
+it('rolls back incompatible setup while preserving original records',async()=>{
+ const f=await fixture(false);await f.query("CREATE SCHEMA yoga_studio;CREATE TABLE yoga_studio.classes(keep TEXT);INSERT INTO yoga_studio.classes VALUES ('original')");
+ await expect(initializeDatabase(f.url)).rejects.toThrow();expect((await f.query('SELECT * FROM yoga_studio.classes')).rows).toEqual([{keep:'original'}]);expect((await f.query("SELECT to_regclass('yoga_studio.metadata') AS name")).rows[0].name).toBeNull();
+});
+it('denies unprivileged roles schema access and enables row level security',async()=>{
+ const f=await fixture();expect((await f.query("SELECT has_schema_privilege('pg_monitor','yoga_studio','USAGE') AS allowed")).rows[0].allowed).toBe(false);
+ expect((await f.query("SELECT relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='yoga_studio' AND c.relkind='r'")).rows.every(r=>r.relrowsecurity)).toBe(true);
+});
+it('rejects unsupported versions without inserting a current version',async()=>{
+ const f=await fixture();await f.query('ALTER TABLE yoga_studio.schema_version DROP CONSTRAINT schema_version_version_check;UPDATE yoga_studio.schema_version SET version=2');
+ await expect(initializeDatabase(f.url)).rejects.toThrow();expect((await f.query('SELECT version FROM yoga_studio.schema_version')).rows).toEqual([{version:2}]);
+});
+it('rejects missing submission uniqueness and incompatible column types without losing records',async()=>{
+ for(const change of ['ALTER TABLE yoga_studio.classes DROP CONSTRAINT classes_submission_token_key','ALTER TABLE yoga_studio.classes ALTER COLUMN teacher TYPE INTEGER USING NULL']){
+ const f=await fixture();await f.query("INSERT INTO yoga_studio.metadata VALUES ('keep','original')");await f.query(change);
+ await expect(initializeDatabase(f.url)).rejects.toThrow();expect((await f.query('SELECT * FROM yoga_studio.metadata')).rows).toEqual([{key:'keep',value:'original'}]);}
+});

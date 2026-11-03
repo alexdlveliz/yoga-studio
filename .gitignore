@@ -9,3 +9,7 @@ data/
 *.db
 *.db-*
 .DS_Store
+
+build/
+.netlify/
+!.env.example
