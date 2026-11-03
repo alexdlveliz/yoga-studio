@@ -1,44 +1,44 @@
 # Yoga Studio
 
-A local foundation for an owner-facing studio schedule. It currently displays an empty weekly schedule; class, people, package, and enrollment management are future work.
+Aplicación en español para consultar el horario semanal y crear y editar clases. Este despliegue es una **demostración pública de un trabajo académico**: cualquier visitante puede modificar los registros compartidos. Usa únicamente datos ficticios. No incluye acceso de estudiantes, autenticación, pagos ni notificaciones.
 
-## Requirements
+El servidor Express/EJS conserva sus rutas y funciona localmente o en Netlify Functions. Los registros se guardan en PostgreSQL de Supabase, fuera del despliegue. Los archivos SQLite existentes quedan intactos; no se importan ni se usan durante la ejecución.
 
-- Node.js 24 with full ICU support and pnpm 10.12.4 (the version is pinned in `package.json`; Corepack can provide it).
-- Native build tools for `better-sqlite3` if a prebuilt binary is unavailable (for example, Xcode Command Line Tools on macOS).
+## Desarrollo local
 
-## Set up
-
-Clone the repository and run the following commands from its root:
+Requiere Node.js 24 con ICU completo, pnpm 10.12.4 y PostgreSQL 14 o posterior (o un proyecto Supabase gratuito). Las pruebas de copia requieren `pg_dump` y `pg_restore` de la misma versión principal que el servidor o posterior.
 
 ```sh
 corepack enable
 pnpm install --frozen-lockfile
-pnpm run build
-pnpm run db:init
-pnpm start
+cp .env.example .env
 ```
 
-Open <http://127.0.0.1:8000/>. Stop the server with Ctrl-C. Run `pnpm run db:init` only once: it refuses to overwrite any existing file. Run `pnpm run build` after changing TypeScript, before launching or initializing.
-
-The database defaults to `data/studio.sqlite` in this clone. To use another location, set `STUDIO_DB_PATH` to a persistent file path before both initialization and launch. Keep a backup of this file; it contains local studio data and is not included in Git. The server binds only to loopback and is intended for one computer, not remote access.
-
-Week boundaries use the Node process's locale. Set `STUDIO_LOCALE` (for example, `es-GT`) if that differs from the computer's regional settings. An invalid or unsupported locale falls back to `en-US` and logs a warning. Calendar dates use the computer's local date.
-
-## Verify
-
-Run `pnpm run build` followed by `pnpm test`. Tests use isolated temporary databases and include real application-process restarts. See [quickstart validation](specs/001-app-foundation/quickstart.md) for manual checks. If the schedule reports unavailable data, check that the original database is accessible and retry or seek help; do not initialize over an existing database.
-
-## Upgrade an existing database
-
-Stop the application before upgrading. Back up the existing SQLite file (the default is `data/studio.sqlite`, or the path in `STUDIO_DB_PATH`) to a separate safe location before proceeding. With the same `STUDIO_DB_PATH` used by the application, run:
+Edita `.env` con tus conexiones privadas. Node no carga ese archivo automáticamente; para la configuración local:
 
 ```sh
 pnpm run build
-pnpm run db:migrate
-pnpm start
+node --env-file=.env dist/init-db.js
+node --env-file=.env dist/server.js
 ```
 
-The upgrade preserves version 1 metadata and runs in a transaction. `db:init` is only for a new file and will never replace an existing file. If migration fails, keep the original and backup, resolve the error, and retry; do not initialize over it. For a new installation, use `pnpm run db:init` instead of the upgrade command.
+Abre <http://127.0.0.1:8000/>. También puedes exportar las variables en la sesión y usar `pnpm run db:init` y `pnpm start`. `db:init` y el alias `db:migrate` preparan el esquema PostgreSQL de forma transaccional y repetible; no borran registros. No ejecutes el procedimiento SQLite de versiones anteriores.
 
-Class registrations are stored as an internal seam for the capacity guard; there is no enrollment interface yet. Future enrollment writes must use the same SQLite database and serialized write transaction, preserving the registration records and adding the information needed for waitlist ordering and package accounting. Run `pnpm run build` and `pnpm test` to verify changes; [class scheduling checks](specs/002-create-classes/quickstart.md) describe the manual scenarios.
+## Despliegue gratuito
+
+La guía [Netlify + Supabase](docs/deployment.md) explica cuentas, conexiones, secretos, preparación, publicación, límites, recuperación y copias de seguridad. Preparar el repositorio no crea cuentas ni publica el sitio. Una vez publicado, usa el dominio HTTPS `*.netlify.app` que proporciona Netlify.
+
+## Verificación
+
+Los tests requieren una conexión `TEST_DATABASE_URL` a un servidor PostgreSQL **de pruebas**, cuyo usuario pueda crear bases de datos. Cada prueba usa una base aislada que se elimina al terminar; no uses credenciales del proyecto compartido. Ejemplo con un PostgreSQL local ya iniciado:
+
+```sh
+export TEST_DATABASE_URL=postgresql://localhost/postgres
+pnpm run build
+pnpm test
+pnpm run test:deploy
+```
+
+`test:deploy` empaqueta la función con las herramientas de Netlify y la ejecuta desde un directorio temporal separado, comprobando vistas, formularios, errores y recursos estáticos. No publica ni necesita credenciales. Las pruebas de comportamiento usan PostgreSQL real e incluyen duplicados concurrentes, restricciones de cupo para inscritos/en espera, rollback, reintentos y reinicios del proceso.
+
+La matrícula solo existe como estructura interna para proteger el cupo; aún no hay una interfaz de inscripción, paquetes ni contabilidad de accesos. Futuras escrituras de matrícula deben conservar el bloqueo de la clase y añadir las reglas aprobadas de paquetes, reembolsos y orden FIFO.

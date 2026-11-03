@@ -18,11 +18,11 @@ Replace paper records with an easy-to-use way to manage classes, teachers, stude
 
 ## Operating Context
 
-The app opens on the current week's class schedule, with navigation between weeks. Classes show their name, date, time, and assigned teacher; a class without a teacher is highlighted. Dates and times follow the studio computer's local time.
+The app opens on the current week's class schedule, with navigation between weeks. Classes show their name, date, time, and assigned teacher; a class without a teacher is highlighted. Dates and times follow the explicitly configured studio timezone and locale.
 
-The current implementation runs locally on one computer and stores data in a persistent SQLite database. The interface is in Spanish.
+The implementation supports local Express and Netlify Functions with persistent PostgreSQL storage in Supabase. The Spanish coursework demo is public and editable by all visitors; use only fictional records. Account creation and publication remain separate manual steps.
 
-The observed owner reports reliable internet. Preferred phone access remains a deployment gap: the current server binds to loopback on one computer. Geography is unspecified; time pressure is an operating condition rather than a geographic target.
+The observed owner reports reliable internet. Phone access can be verified after publishing the prepared Netlify deployment; local development still binds to loopback. Geography is unspecified; time pressure is an operating condition rather than a geographic target.
 
 ## Capabilities and Constraints
 
