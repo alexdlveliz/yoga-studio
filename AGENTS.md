@@ -4,6 +4,8 @@ This repository is for an owner-facing yoga studio management web app. The appro
 
 ## Product rules
 
+Before planning or implementing features, consult [the ICP and primary user persona](docs/product/icp-and-persona.md). Tailor decisions to the small-studio owner's daily work and phone preference, preserve the document's evidence labels, and surface conflicts with approved requirements before changing behavior. Desired capabilities in the profiles are inputs to feature planning, not claims that those capabilities exist.
+
 - Open on the current week's class schedule. The owner manages classes, capacity, and teacher assignments.
 - Maintain teachers, students, and student class packages. Packages grant 1, 5, 10, or a custom positive number of class accesses.
 - Assigning a student to an available class place deducts one access. Adding a student to a full class puts them on the waitlist without a deduction.
