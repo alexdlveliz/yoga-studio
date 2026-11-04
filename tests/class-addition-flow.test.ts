@@ -14,7 +14,7 @@ it('reports invalid, conflicting, missing, archived, overflow and storage errors
  const f=await fixture(),app=await start(f.url);try{
  const created=await app.post('/students',studentValues()),path=created.headers.get('location')!.split('?')[0];
  const form=await (await fetch(app.base+path+'/classes/new')).text(),token=form.match(/name="token" value="([^"]+)"/)![1];
- let r=await app.post(path+'/classes',{classChoice:'custom',customCount:'0',token});expect(r.status).toBe(422);expect(await r.text()).toContain(token);
+ let r=await app.post(path+'/classes',{classChoice:'custom',customCount:'0',token});expect(r.status).toBe(422);const invalidHtml=await r.text();expect(invalidHtml).toContain(token);expect(invalidHtml).toMatch(/id="customCount"[^>]*aria-describedby="class-error"/);
  r=await app.post(path+'/classes',{classChoice:'5',customCount:'',token:'bad'});expect(r.status).toBe(422);
  r=await app.post('/students/missing/classes',{classChoice:'5',customCount:'',token});expect(r.status).toBe(404);
  r=await app.post(path+'/classes',{classChoice:'5',customCount:'',token});expect(r.status).toBe(303);
@@ -45,7 +45,7 @@ it('adds preset and custom amounts with fresh tokens and replays an older form o
 it('validates initial choices and preserves a custom amount on error',async()=>{
  const f=await fixture(),app=await start(f.url);try{
  const values={...studentValues(),classChoice:'custom',customCount:'1e2'};
- let r=await app.post('/students',values);expect(r.status).toBe(422);let html=await r.text();expect(html).toContain(values.token);expect(html).toContain('value="1e2"');
+ let r=await app.post('/students',values);expect(r.status).toBe(422);let html=await r.text();expect(html).toContain(values.token);expect(html).toContain('value="1e2"');expect(html).toMatch(/id="customCount"[^>]*aria-describedby="class-error"/);
  for(const choice of ['1','5','10','custom']){r=await app.post('/students',{...studentValues(),classChoice:choice,customCount:'7'});expect(r.status).toBe(303);html=await (await fetch(app.base+r.headers.get('location'))).text();expect(html).toContain(`<dd>${choice==='custom'?'7':choice}</dd>`);}
  }finally{await app.stop();}
 });

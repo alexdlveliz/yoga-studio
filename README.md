@@ -1,6 +1,6 @@
 # Yoga Studio
 
-Aplicación en español para consultar el horario semanal y crear y editar clases. Este despliegue es una **demostración pública de un trabajo académico**: cualquier visitante puede modificar los registros compartidos. Usa únicamente datos ficticios. No incluye acceso de estudiantes, autenticación, pagos ni notificaciones.
+Aplicación en español para consultar el horario semanal, gestionar clases y mantener estudiantes y sus clases disponibles. Este despliegue es una **demostración pública de un trabajo académico**: cualquier visitante puede modificar los registros compartidos. Usa únicamente datos ficticios. No incluye acceso de estudiantes, autenticación, pagos ni notificaciones.
 
 El servidor Express/EJS conserva sus rutas y funciona localmente o en Netlify Functions. Los registros se guardan en PostgreSQL de Supabase, fuera del despliegue. Los archivos SQLite existentes quedan intactos; no se importan ni se usan durante la ejecución.
 
@@ -22,7 +22,7 @@ node --env-file=.env dist/init-db.js
 node --env-file=.env dist/server.js
 ```
 
-Abre <http://127.0.0.1:8000/>. También puedes exportar las variables en la sesión y usar `pnpm run db:init` y `pnpm start`. `db:init` y el alias `db:migrate` preparan el esquema PostgreSQL de forma transaccional y repetible; no borran registros. No ejecutes el procedimiento SQLite de versiones anteriores.
+Abre <http://127.0.0.1:8000/>. También puedes exportar las variables en la sesión y usar `pnpm run db:init` y `pnpm start`. `db:init` y el alias `db:migrate` preparan el esquema PostgreSQL de forma transaccional y repetible; actualizan el esquema v1 conocido a v2 y preservan los registros existentes. Si el esquema no coincide con una versión conocida, la inicialización falla sin aplicar cambios. No ejecutes el procedimiento SQLite de versiones anteriores.
 
 ## Despliegue gratuito
 
@@ -41,4 +41,8 @@ pnpm run test:deploy
 
 `test:deploy` empaqueta la función con las herramientas de Netlify y la ejecuta desde un directorio temporal separado, comprobando vistas, formularios, errores y recursos estáticos. No publica ni necesita credenciales. Las pruebas de comportamiento usan PostgreSQL real e incluyen duplicados concurrentes, restricciones de cupo para inscritos/en espera, rollback, reintentos y reinicios del proceso.
 
-La matrícula solo existe como estructura interna para proteger el cupo; aún no hay una interfaz de inscripción, paquetes ni contabilidad de accesos. Futuras escrituras de matrícula deben conservar el bloqueo de la clase y añadir las reglas aprobadas de paquetes, reembolsos y orden FIFO.
+## Estudiantes y clases disponibles
+
+Desde «Estudiantes» se pueden crear y buscar registros, corregir nombre y teléfono, y archivar con confirmación. Los registros archivados se pueden consultar, pero no editar ni recibir nuevas clases. Cada estudiante tiene un saldo único: al crear se puede comenzar con cero o agregar 1, 5, 10 o una cantidad entera positiva; después se pueden agregar más clases. Los reintentos del mismo formulario no duplican la suma. No se guardan asignaciones ni historial de paquetes.
+
+La matrícula solo existe como estructura interna para proteger el cupo; la inscripción, las deducciones y devoluciones de accesos y la promoción FIFO siguen pendientes. Tampoco están implementadas las notificaciones ni la restauración de estudiantes archivados. La recuperación de la base de datos mediante copias está documentada en la guía de despliegue.

@@ -67,3 +67,14 @@ On 2026-11-04, the student validation, storage, HTTP and pending-state tests pas
 ## US 3 implementation verification
 
 On 2026-11-04, the student storage and HTTP tests passed against disposable local PostgreSQL databases. They covered preserved balances and registrations, repeated archive, retained edit input, explicit archive confirmation, read-only archived details and controlled row-lock ordering with additions and edits. Browser/device checks and owner acceptance remain pending under T031–T032.
+
+## Phase 6 evidence (2026-11-04)
+
+- `pnpm run build`: passed.
+- `TEST_DATABASE_URL=postgresql://… pnpm test`: 17 files and 64 tests passed against disposable local PostgreSQL, including schedule, class/capacity, student, restart/restore and deployment adapter regressions. The expected invalid-locale fallback message appeared in the schedule test.
+- `pnpm run test:deploy`: passed; the Netlify bundle included the student views and pending script, and its student form, validation and static script were served from the unpacked function without publishing.
+- Chrome responsive emulation at 320 px: creation form and long student name fit; the zero balance was visible. With 3G throttling, create, add, edit and archive each showed a disabled button and Spanish pending status; the final balance remained 5 after edit and the archive redirected to the list. At 390 px the student list and archive notice fit. Native browser validation blocked an empty required name without disabling the button. At 390 px, creation with JavaScript disabled saved an initial balance of 5. A simulated storage failure returned a usable form with the entered name and phone; after the test table was restored, retry succeeded, and a second activation while saving had no effect.
+- Browser verification remains incomplete (T031): the complete no-JavaScript edit/add/archive flow and the complete 28-to-33 balance sequence in the browser have not all been observed at both widths. The browser also returned to a submitted addition form with its button enabled and displayed retained errors for missing, zero, negative, fractional and nonnumeric custom counts. Existing automated tests cover additional cases, but do not replace the remaining browser exercise.
+- Owner acceptance SC-001–005 remains pending (T032): no owner-led session, physical phone, unassisted timings or owner feedback was available. No deployment was performed.
+
+The custom-count inputs were updated after the browser audit to associate validation errors with the input itself; a targeted HTTP regression test passed, followed by the full 64-test suite, build and packaged deployment smoke check.
