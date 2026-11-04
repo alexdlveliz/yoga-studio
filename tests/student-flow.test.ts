@@ -40,3 +40,41 @@ it('suppresses concurrent submissions across app instances and survives reopenin
   }finally{await reopened.stop();}
  }finally{if(!stopped)await a.stop();await b.stop();}
 });
+it('edits and explicitly archives while retaining readable details and balance',async()=>{
+ const f=await fixture(),app=await start(f.url);try{
+ const created=await app.post('/students',{...studentValues(),classChoice:'5'}),path=created.headers.get('location')!.split('?')[0];
+ let r=await fetch(app.base+path+'/edit');expect(r.status).toBe(200);let html=await r.text();expect(html).toContain('value="Estudiante de prueba"');expect(html).toContain('value="+502 5555-0101"');
+ r=await app.post(path,{name:' ',phone:'999'});expect(r.status).toBe(422);expect(await r.text()).toContain('value="999"');
+ r=await app.post(path,{name:'Nuevo',phone:'999'});expect(r.status).toBe(303);expect(r.headers.get('location')).toBe(path+'?notice=updated');
+ r=await fetch(app.base+path+'/archive');expect(r.status).toBe(200);html=await r.text();expect(html).toContain('Archivar estudiante');expect(html).toContain(`href="${path}"`);
+ r=await fetch(app.base+path);expect((await r.text())).toContain('Nuevo');
+ r=await app.post(path+'/archive',{});expect(r.status).toBe(422);
+ r=await app.post(path+'/archive',{confirm:'archive'});expect(r.status).toBe(303);expect(r.headers.get('location')).toBe('/students?notice=archived');
+ r=await app.post(path+'/archive',{confirm:'archive'});expect(r.status).toBe(303);
+ r=await fetch(app.base+'/students?status=archived');expect(await r.text()).toContain('Nuevo');
+ r=await fetch(app.base+path);html=await r.text();expect(html).toContain('Estudiante archivado');expect(html).toContain('<dd>5</dd>');expect(html).not.toContain('/edit');expect(html).not.toContain('/archive');expect(html).not.toContain('/classes/new');
+ r=await app.post(path,{name:'Intento',phone:'999'});expect(r.status).toBe(409);expect(await r.text()).toContain('Intento');
+ expect((await fetch(app.base+path+'/edit')).status).toBe(409);expect((await fetch(app.base+path+'/archive')).status).toBe(409);
+ expect(await (await fetch(app.base+'/students?notice=archived')).text()).toContain('Estudiante archivado.');
+ expect((await fetch(app.base+'/students/missing/edit')).status).toBe(404);
+ expect((await app.post('/students/missing/archive',{confirm:'archive'})).status).toBe(404);
+ }finally{await app.stop();}
+});
+it('retains edit input when storage fails',async()=>{
+ const f=await fixture(),app=await start(f.url);try{
+ const created=await app.post('/students',studentValues()),path=created.headers.get('location')!.split('?')[0];
+ await f.query('ALTER TABLE yoga_studio.students RENAME TO students_unavailable');
+ const r=await app.post(path,{name:'Valor conservado',phone:'123'});expect(r.status).toBe(503);expect(await r.text()).toContain('Valor conservado');
+ }finally{await app.stop();}
+});
+it('reports malformed requests and archive failures without changing another student',async()=>{
+ const f=await fixture(),app=await start(f.url);try{
+ const first=await app.post('/students',studentValues()),other=await app.post('/students',{...studentValues(),name:'Otra'});
+ const path=first.headers.get('location')!.split('?')[0],otherPath=other.headers.get('location')!.split('?')[0];
+ let r=await fetch(app.base+path+'/archive',{method:'POST',body:new URLSearchParams([['confirm','archive'],['confirm','archive']]),redirect:'manual'});expect(r.status).toBe(400);
+ r=await app.post(path+'/archive',{confirm:'wrong'});expect(r.status).toBe(422);expect(await r.text()).toContain('Confirma');
+ expect((await fetch(app.base+otherPath)).status).toBe(200);
+ await f.query('ALTER TABLE yoga_studio.students RENAME TO students_unavailable');
+ r=await app.post(path+'/archive',{confirm:'archive'});expect(r.status).toBe(503);expect(await r.text()).toContain('No se pudo archivar');
+ }finally{await app.stop();}
+});

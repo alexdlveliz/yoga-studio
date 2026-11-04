@@ -74,3 +74,23 @@ export async function addClasses(url:string,id:string,amount:number,token:string
   throw error;
  }
 }
+
+type MutationResult={kind:'ok'}|{kind:'missing'}|{kind:'archived'};
+export async function editStudent(url:string,id:string,input:StudentInput):Promise<MutationResult>{
+ const {value,errors}=validateStudent(input);if(Object.keys(errors).length)throw new Error('Invalid student');
+ return transaction(url,async client=>{
+  const student=(await client.query('SELECT archived_at FROM yoga_studio.students WHERE id=$1 FOR UPDATE',[id])).rows[0];
+  if(!student)return {kind:'missing'};
+  if(student.archived_at)return {kind:'archived'};
+  await client.query('UPDATE yoga_studio.students SET name=$1,phone=$2 WHERE id=$3',[value.name,value.phone,id]);
+  return {kind:'ok'};
+ });
+}
+export async function archiveStudent(url:string,id:string):Promise<MutationResult>{
+ return transaction(url,async client=>{
+  const student=(await client.query('SELECT archived_at FROM yoga_studio.students WHERE id=$1 FOR UPDATE',[id])).rows[0];
+  if(!student)return {kind:'missing'};
+  if(!student.archived_at)await client.query('UPDATE yoga_studio.students SET archived_at=now() WHERE id=$1',[id]);
+  return {kind:'ok'};
+ });
+}

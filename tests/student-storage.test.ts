@@ -79,3 +79,47 @@ it('keeps normalized creation receipts immutable and rejects operation reuse',as
  const addToken=randomUUID();await addClasses(f.url,a.id,1,addToken);
  expect(await createStudent(f.url,{name:'Ana',phone:'123'},addToken,5)).toEqual({kind:'conflict'});
 });
+it('edits and archives without changing balances or registrations',async()=>{
+ const {editStudent,archiveStudent,addClasses}=await import('../src/students.js');const f=await fixture();
+ const a=await createStudent(f.url,{name:'Ana',phone:'123'},randomUUID(),5);if(a.kind!=='ok')throw Error();
+ const token=randomUUID();await addClasses(f.url,a.id,1,token);
+ await f.query("INSERT INTO yoga_studio.classes(id,submission_token,title,date,time,student_limit) VALUES ('class','class-token','Yoga','2026-11-04','09:00',5)");
+ await f.query("INSERT INTO yoga_studio.registrations(class_id,student_id,status) VALUES ('class',$1,'assigned')",[a.id]);
+ expect(await editStudent(f.url,a.id,{name:' Nueva ',phone:' 456 '})).toEqual({kind:'ok'});
+ expect(await getStudent(f.url,a.id)).toMatchObject({id:a.id,name:'Nueva',phone:'456',availableClasses:6,archivedAt:null});
+ expect(await archiveStudent(f.url,a.id)).toEqual({kind:'ok'});const archived=await getStudent(f.url,a.id);
+ expect(await archiveStudent(f.url,a.id)).toEqual({kind:'ok'});expect((await getStudent(f.url,a.id))?.archivedAt).toEqual(archived?.archivedAt);
+ expect(await editStudent(f.url,a.id,{name:'Otro',phone:'1'})).toEqual({kind:'archived'});
+ expect(await addClasses(f.url,a.id,1,randomUUID())).toEqual({kind:'archived'});expect(await addClasses(f.url,a.id,1,token)).toEqual({kind:'ok',id:a.id});
+ expect((await f.query('SELECT student_id,status FROM yoga_studio.registrations')).rows).toEqual([{student_id:a.id,status:'assigned'}]);
+ expect(await editStudent(f.url,'missing',{name:'A',phone:'1'})).toEqual({kind:'missing'});expect(await archiveStudent(f.url,'missing')).toEqual({kind:'missing'});
+});
+it('serializes edits, additions and archive on the student row',async()=>{
+ const {editStudent,archiveStudent,addClasses}=await import('../src/students.js');const f=await fixture();
+ const a=await createStudent(f.url,{name:'Ana',phone:'1'},randomUUID(),5);if(a.kind!=='ok')throw Error();
+ const [added,edited]=await Promise.all([addClasses(f.url,a.id,7,randomUUID()),editStudent(f.url,a.id,{name:'Ana Nueva',phone:'2'})]);
+ expect(added.kind).toBe('ok');expect(edited.kind).toBe('ok');await archiveStudent(f.url,a.id);
+ expect(await addClasses(f.url,a.id,1,randomUUID())).toEqual({kind:'archived'});
+ expect(await getStudent(f.url,a.id)).toMatchObject({name:'Ana Nueva',phone:'2',availableClasses:12});
+});
+it('orders addition, edit and archive while all contend for the same row lock',async()=>{
+ const {Pool}=await import('pg');const {editStudent,archiveStudent,addClasses}=await import('../src/students.js');const f=await fixture();
+ const pool=new Pool({connectionString:f.url});
+ const waitForLocks=async(count:number)=>{for(let i=0;i<200;i++){const result=await pool.query("SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%yoga_studio.students%FOR UPDATE%'");if(result.rows[0].n>=count)return;await new Promise(r=>setTimeout(r,10));}throw Error('Timed out waiting for student row locks');};
+ try{
+  for(const first of ['add','archive','edit','archive-edit'] as const){
+   const student=await createStudent(f.url,{name:first,phone:'1'},randomUUID(),5);if(student.kind!=='ok')throw Error();
+   const blocker=await pool.connect();await blocker.query('BEGIN');await blocker.query('SELECT id FROM yoga_studio.students WHERE id=$1 FOR UPDATE',[student.id]);
+   const token=randomUUID();
+   const leading=first==='add'?addClasses(f.url,student.id,7,token):first.startsWith('archive')?archiveStudent(f.url,student.id):editStudent(f.url,student.id,{name:'Edited',phone:'2'});
+   await waitForLocks(1);
+   const following=first==='archive'?addClasses(f.url,student.id,7,token):first==='archive-edit'?editStudent(f.url,student.id,{name:'Rejected',phone:'2'}):archiveStudent(f.url,student.id);
+   await waitForLocks(2);await blocker.query('COMMIT');blocker.release();
+   expect((await leading).kind).toBe('ok');expect((await following).kind).toBe(first.startsWith('archive')?'archived':'ok');
+   const saved=await getStudent(f.url,student.id);expect(saved?.archivedAt).not.toBeNull();
+   expect(saved?.availableClasses).toBe(first==='add'?12:5);
+   expect(saved?.name).toBe(first==='edit'?'Edited':first);
+   if(first==='add')expect(await addClasses(f.url,student.id,7,token)).toEqual({kind:'ok',id:student.id});
+  }
+ }finally{await pool.end();}
+});

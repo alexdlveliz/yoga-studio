@@ -76,14 +76,14 @@ Tasks use `- [ ] Tnnn [P?] [USn?] Description`. `[P]` identifies work in differe
 
 ### Tests first
 
-- [ ] T023 [US3] Extend tests/student-storage.test.ts with edit/archive identity and balance preservation, repeated archive no-op, archived edit/addition rejection and controlled concurrent archive/addition/edit orderings; addition-first retains its amount, archive-first rejects a new addition, matching old receipt replays still succeed and registrations stay unchanged.
-- [ ] T024 [P] [US3] Extend tests/student-flow.test.ts for GET/POST /students/:id/edit and /students/:id (edit POST), GET/POST /students/:id/archive, prefilled fields, explicit confirm=archive, cancellation without writes, 303 updated/archived notices, archived-list/read-only details, missing ids, archived conflicts and 422/409/503 value retention; assert archived pages have no mutation controls and archive workflows fit two screens.
+- [X] T023 [US3] Extend tests/student-storage.test.ts with edit/archive identity and balance preservation, repeated archive no-op, archived edit/addition rejection and controlled concurrent archive/addition/edit orderings; addition-first retains its amount, archive-first rejects a new addition, matching old receipt replays still succeed and registrations stay unchanged.
+- [X] T024 [P] [US3] Extend tests/student-flow.test.ts for GET/POST /students/:id/edit and /students/:id (edit POST), GET/POST /students/:id/archive, prefilled fields, explicit confirm=archive, cancellation without writes, 303 updated/archived notices, archived-list/read-only details, missing ids, archived conflicts and 422/409/503 value retention; assert archived pages have no mutation controls and archive workflows fit two screens.
 
 ### Implementation
 
-- [ ] T025 [US3] Implement edit and archive operations in src/students.ts under the same student-row lock used for additions: change only name/phone or archived_at, respectively; preserve balance/identity/registrations, reject new archived edits and make repeated archive idempotent.
-- [ ] T026 [US3] Implement edit/archive contract handlers in src/student-routes.ts with required confirmation, Spanish typed failures and retained input; cancellation remains GET-only, successful edit redirects to details and archive to active list with inline notices.
-- [ ] T027 [US3] Complete prefilled edit mode in src/views/student-form.ejs, explicit confirmation/cancel in src/views/student-archive.ejs and active-only edit/archive links plus read-only archived presentation in src/views/student-detail.ejs; include pending enhancement for both forms and run US3 tests.
+- [X] T025 [US3] Implement edit and archive operations in src/students.ts under the same student-row lock used for additions: change only name/phone or archived_at, respectively; preserve balance/identity/registrations, reject new archived edits and make repeated archive idempotent.
+- [X] T026 [US3] Implement edit/archive contract handlers in src/student-routes.ts with required confirmation, Spanish typed failures and retained input; cancellation remains GET-only, successful edit redirects to details and archive to active list with inline notices.
+- [X] T027 [US3] Complete prefilled edit mode in src/views/student-form.ejs, explicit confirmation/cancel in src/views/student-archive.ejs and active-only edit/archive links plus read-only archived presentation in src/views/student-detail.ejs; include pending enhancement for both forms and run US3 tests.
 
 **Checkpoint**: All three stories work; archives preserve readable balances and cannot receive new mutations.
 

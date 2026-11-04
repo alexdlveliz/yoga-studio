@@ -63,3 +63,7 @@ Enrollment deductions/refunds and FIFO promotion remain later work; no manual ac
 ## US 2 implementation verification
 
 On 2026-11-04, the student validation, storage, HTTP and pending-state tests passed against disposable local PostgreSQL databases. The full `pnpm test` suite passed (54 tests at that run), including schedule and class regressions, and `pnpm run build` passed. The HTTP tests exercised the 5 + 1 + 5 + 10 + 7 = 28 sequence, a replay, and a fresh addition to 33. Phone/browser checks and owner acceptance remain pending under T031–T032; this automated evidence does not establish usability acceptance.
+
+## US 3 implementation verification
+
+On 2026-11-04, the student storage and HTTP tests passed against disposable local PostgreSQL databases. They covered preserved balances and registrations, repeated archive, retained edit input, explicit archive confirmation, read-only archived details and controlled row-lock ordering with additions and edits. Browser/device checks and owner acceptance remain pending under T031–T032.

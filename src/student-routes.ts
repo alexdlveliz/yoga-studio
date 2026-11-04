@@ -1,6 +1,6 @@
 import {Router} from 'express';
 import {randomUUID} from 'node:crypto';
-import {addClasses,createStudent,getStudent,listStudents,validateStudent,validateClassAddition} from './students.js';
+import {addClasses,archiveStudent,createStudent,editStudent,getStudent,listStudents,validateStudent,validateClassAddition} from './students.js';
 
 export function studentRouter(url:string){
  const router=Router();
@@ -24,6 +24,41 @@ export function studentRouter(url:string){
   if(Object.keys(errors).length)return res.status(422).render('student-form',{values,errors,token,message:''});
   try{const saved=await createStudent(url,checked.value,token,amount.amount);if(saved.kind==='conflict')return res.status(409).render('student-form',{values,errors:{},token,message:'Este formulario ya se usó con otros datos. Abre uno nuevo.'});return res.redirect(303,`/students/${saved.id}?notice=created`);}
   catch{return res.status(503).render('student-form',{values,errors:{},token,message:'No se pudo guardar el estudiante. Inténtalo de nuevo.'});}
+ });
+ router.get('/:id/edit',async(req,res)=>{
+  try{const student=await getStudent(url,req.params.id);if(!student)return res.status(404).send('Estudiante no encontrado.');
+   if(student.archivedAt)return res.status(409).send('Este estudiante está archivado.');
+   return res.render('student-form',{studentId:student.id,values:student,errors:{},token:'',message:''});
+  }catch{return res.status(503).render('storage-error');}
+ });
+ router.post('/:id',async(req,res)=>{
+  if(!req.body||malformed(req.body))return bad(res);
+  const values={name:req.body.name??'',phone:req.body.phone??''},checked=validateStudent(values);
+  const render=(status:number,message:string,readOnly=false)=>res.status(status).render('student-form',{studentId:req.params.id,values,errors:checked.errors,token:'',message,readOnly});
+  try{const student=await getStudent(url,req.params.id);if(!student)return res.status(404).send('Estudiante no encontrado.');
+   if(student.archivedAt)return render(409,'Este estudiante está archivado.',true);
+   if(Object.keys(checked.errors).length)return render(422,'');
+   const result=await editStudent(url,req.params.id,checked.value);
+   if(result.kind==='missing')return res.status(404).send('Estudiante no encontrado.');
+   if(result.kind==='archived')return render(409,'Este estudiante está archivado.',true);
+   return res.redirect(303,`/students/${req.params.id}?notice=updated`);
+  }catch{return render(503,'No se pudo guardar el estudiante. Inténtalo de nuevo.');}
+ });
+ router.get('/:id/archive',async(req,res)=>{
+  try{const student=await getStudent(url,req.params.id);if(!student)return res.status(404).send('Estudiante no encontrado.');
+   if(student.archivedAt)return res.status(409).send('Este estudiante está archivado.');
+   return res.render('student-archive',{student,message:''});
+  }catch{return res.status(503).render('storage-error');}
+ });
+ router.post('/:id/archive',async(req,res)=>{
+  if(!req.body||malformed(req.body))return bad(res);
+  let student:Awaited<ReturnType<typeof getStudent>>;
+  const render=(status:number,message:string)=>res.status(status).render('student-archive',{student:student??{id:req.params.id,name:'Estudiante'},message});
+  try{student=await getStudent(url,req.params.id);if(!student)return res.status(404).send('Estudiante no encontrado.');
+   if(req.body.confirm!=='archive')return render(422,'Confirma que deseas archivar al estudiante.');
+   const result=await archiveStudent(url,req.params.id);if(result.kind==='missing')return res.status(404).send('Estudiante no encontrado.');
+   return res.redirect(303,'/students?notice=archived');
+  }catch{return render(503,'No se pudo archivar al estudiante. Inténtalo de nuevo.');}
  });
  router.get('/:id/classes/new',async(req,res)=>{
   try{const student=await getStudent(url,req.params.id);if(!student)return res.status(404).send('Estudiante no encontrado.');
@@ -52,7 +87,7 @@ export function studentRouter(url:string){
  });
  router.get('/:id',async(req,res)=>{
   if(malformed(req.query as Record<string,unknown>))return bad(res);
-  try{const student=await getStudent(url,req.params.id);if(!student)return res.status(404).send('Estudiante no encontrado.');return res.render('student-detail',{student,notice:req.query.notice==='created'?'Estudiante guardado.':req.query.notice==='classes-added'?'Clases agregadas.':''});}
+  try{const student=await getStudent(url,req.params.id);if(!student)return res.status(404).send('Estudiante no encontrado.');return res.render('student-detail',{student,notice:req.query.notice==='created'?'Estudiante guardado.':req.query.notice==='classes-added'?'Clases agregadas.':req.query.notice==='updated'?'Estudiante actualizado.':''});}
   catch{return res.status(503).render('storage-error');}
  });
  return router;
