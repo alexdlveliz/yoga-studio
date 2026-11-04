@@ -59,3 +59,7 @@ Open `http://127.0.0.1:8000/`. Node does not automatically load `.env`. Actual p
 8. Record actual timings/screens/device and ask the owner what was required, how they identified success and where they found available classes. Log confusion before acceptance; automation alone does not prove these usability criteria.
 
 Enrollment deductions/refunds and FIFO promotion remain later work; no manual acceptance scenario here claims they are implemented.
+
+## US 2 implementation verification
+
+On 2026-11-04, the student validation, storage, HTTP and pending-state tests passed against disposable local PostgreSQL databases. The full `pnpm test` suite passed (54 tests at that run), including schedule and class regressions, and `pnpm run build` passed. The HTTP tests exercised the 5 + 1 + 5 + 10 + 7 = 28 sequence, a replay, and a fresh addition to 33. Phone/browser checks and owner acceptance remain pending under T031–T032; this automated evidence does not establish usability acceptance.
