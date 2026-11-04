@@ -2,3 +2,13 @@
 
 .demo-notice { padding: .75rem 1rem; background: #fff0d9; color: #263b46; text-align: center; font-size: .875rem; line-height: 1.5; }
 .student-list{list-style:none;padding:0;margin:28px 0}.student-list li{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;background:#fff;border:1px solid #cad3cc;padding:16px;overflow-wrap:anywhere}.student-list a{font-weight:700}.student-detail{overflow-wrap:anywhere}.student-detail dt{font-weight:700;margin-top:24px}.student-detail dd{margin:8px 0;font-size:20px}
+
+/* Student forms stay readable on narrow screens and with long names. */
+.student-detail, .form-page { overflow-wrap: anywhere; }
+fieldset.field { min-width: 0; }
+.choice { display: block; margin: .5rem 0; }
+.choice input { width: auto; }
+button:disabled { cursor: wait; opacity: .65; }
+[data-pending-status]:empty { display: none; }
+.field .choice { display: flex; align-items: center; gap: .5rem; font-weight: 400; }
+.field .choice input { display: inline-block; flex: none; width: 1.2rem; min-height: 1.2rem; margin: 0; padding: 0; }

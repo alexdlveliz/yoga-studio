@@ -17,7 +17,7 @@ it('preserves values and token for validation failures and rejects malformed str
  response=await fetch(app.base+'/students?notice=arbitrary');expect(await response.text()).not.toContain('arbitrary');
  response=await fetch(app.base+'/students',{method:'POST',body:new URLSearchParams([['name','Ana'],['name','Otra'],['phone','123'],['token',values.token]]),redirect:'manual'});expect(response.status).toBe(400);
  values.name='Ana';values.token='invalid';response=await app.post('/students',values);expect(response.status).toBe(422);
- values.token=studentValues().token;values.classChoice='5';response=await app.post('/students',values);expect(response.status).toBe(422);
+ values.token=studentValues().token;values.classChoice='invalid';response=await app.post('/students',values);expect(response.status).toBe(422);
  }finally{await app.stop();}
 });
 it('retains input and token on a storage error and reports token conflicts',async()=>{
