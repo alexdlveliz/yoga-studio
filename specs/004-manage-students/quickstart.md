@@ -1,5 +1,17 @@
 # Validation quickstart: Students and available classes
 
+## Baseline before implementation
+
+- `pnpm run build`: passed.
+- `pnpm test` with a disposable local PostgreSQL 14 cluster: 12 test files and 32 tests passed. The test server required access outside the sandbox for PostgreSQL shared memory and local ports.
+- `initializeDatabase` is called by both database entry points and test fixtures; it uses `transaction`, which is also used by class and metadata writes. `createApp` is called by the server and test helpers, including process-restart coverage. Preserve these entry points and the shared transaction contract.
+
+## Student creation MVP verification
+
+- `pnpm run build`: passed after the student creation changes.
+- `TEST_DATABASE_URL=... pnpm test`: 15 test files and 45 tests passed against a disposable local PostgreSQL 14 server, including v1 migration, retry concurrency, student search and schedule regressions.
+- Browser-sized visual checks and owner acceptance have not been performed. Initial and later class additions, editing and archiving remain later tasks.
+
 This describes validation after implementation, not completed test results. See [contract](contracts/student-management.md) and [data model](data-model.md). Revised scope has no package assignment history.
 
 ## Prerequisites and setup
