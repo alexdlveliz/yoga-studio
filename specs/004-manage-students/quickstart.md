@@ -1,0 +1,80 @@
+# Validation quickstart: Students and available classes
+
+## Baseline before implementation
+
+- `pnpm run build`: passed.
+- `pnpm test` with a disposable local PostgreSQL 14 cluster: 12 test files and 32 tests passed. The test server required access outside the sandbox for PostgreSQL shared memory and local ports.
+- `initializeDatabase` is called by both database entry points and test fixtures; it uses `transaction`, which is also used by class and metadata writes. `createApp` is called by the server and test helpers, including process-restart coverage. Preserve these entry points and the shared transaction contract.
+
+## Student creation MVP verification
+
+- `pnpm run build`: passed after the student creation changes.
+- `TEST_DATABASE_URL=... pnpm test`: 15 test files and 45 tests passed against a disposable local PostgreSQL 14 server, including v1 migration, retry concurrency, student search and schedule regressions.
+- Browser-sized visual checks and owner acceptance have not been performed. Initial and later class additions, editing and archiving remain later tasks.
+
+This describes validation after implementation, not completed test results. See [contract](contracts/student-management.md) and [data model](data-model.md). Revised scope has no package assignment history.
+
+## Prerequisites and setup
+
+Node.js 24, pnpm 10.12.4 and PostgreSQL 14+. Follow README.md and docs/deployment.md. Use fictional details in the public demo. Tests need a disposable PostgreSQL server whose role can create databases, never shared production credentials.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm run build
+# Export TEST_DATABASE_URL to a disposable PostgreSQL admin connection.
+pnpm test
+pnpm run test:deploy
+```
+
+Expected: build and all tests pass; packaged function resolves student views and pending-state JavaScript without publishing.
+
+For manual checks copy `.env.example` to `.env`, configure connections, then:
+
+```sh
+node --env-file=.env dist/init-db.js
+node --env-file=.env dist/server.js
+```
+
+Open `http://127.0.0.1:8000/`. Node does not automatically load `.env`. Actual phone access uses the existing hosted HTTPS URL; a narrow desktop viewport proves layout only.
+
+## Automated evidence required
+
+- Fresh v2 and known exact v1 upgrade preserve seeded metadata/classes/assigned+waitlisted registrations, lock trigger and existing behavior. Repeat/concurrent initialization is safe. Unknown versions/schema drift roll back. Students/receipts have private privileges/RLS.
+- Validate nonblank Unicode names/phones, permissive formatting, duplicate identities and literal wildcard name search. Details display zero and positive balances correctly.
+- Create without initial classes (0), with each preset/custom amount, and reject invalid counts/overflow. Inject receipt/storage failure and prove no partial student or increment.
+- Concurrent same-token requests through independent app instances create one student/increment once. Retry after response loss, another successful addition and process restart still does not increment again. Changed target/input conflicts. Fresh tokens allow intentional same-size additions.
+- Concurrent distinct additions both appear in the final total; archive/addition/edit serialize without lost updates. Edit/archive/cancel preserve balances. Existing registrations/capacity remain unchanged.
+- Restart a real built process and compare all active/archived details/balances. Extend dump/restore checks to receipts, balances, constraints and version; a restored receipt still suppresses retry.
+- HTTP 422/409/503 preserve values/tokens with Spanish feedback. Verify no history/metrics are required, new views/assets package successfully and schedule/class regressions pass.
+
+## Phone/browser and owner acceptance (SC-001–005)
+
+1. Open `/`: current-week schedule remains first. Follow “Estudiantes”. At 320px and a representative phone size, essential controls and long values fit without horizontal scrolling.
+2. Time unassisted student creation without initial classes: at most 60 seconds and two screens/dialogs; details show zero. Search by name fragment and clear search. Create a shared-name/phone record and verify independent identity/balance.
+3. Create a student with 5 classes; add 1, 5, 10 and custom 7 in separate actions; expect 28. Intentionally add 5 again; expect 33. Time a standard addition: at most 60 seconds/two screens. Only current available classes are needed.
+4. Under browser network throttling, submit each action and verify immediate Spanish pending state and disabled button. Repeated taps add no duplicate effect. Invalid fields leave or restore a usable button. Returned validation/storage failures retain values; retry works. Navigate back to a submitted form and verify button recovery.
+5. Try blank/whitespace fields and missing/0/-1/1.5/nonnumeric custom amounts. Balance stays unchanged and Spanish feedback retains values. Cancel creation/edit/addition and verify no writes.
+6. Edit one student: identity/balance persist and other students remain unchanged. Cancel archive, then explicitly confirm it. Student leaves active results but retains details/balance under “Archivados”, without mutation controls.
+7. Stop/restart the server and compare 100% of accepted records and balances, including archived students. No package dates/counts/history need to be retrieved.
+8. Record actual timings/screens/device and ask the owner what was required, how they identified success and where they found available classes. Log confusion before acceptance; automation alone does not prove these usability criteria.
+
+Enrollment deductions/refunds and FIFO promotion remain later work; no manual acceptance scenario here claims they are implemented.
+
+## US 2 implementation verification
+
+On 2026-11-04, the student validation, storage, HTTP and pending-state tests passed against disposable local PostgreSQL databases. The full `pnpm test` suite passed (54 tests at that run), including schedule and class regressions, and `pnpm run build` passed. The HTTP tests exercised the 5 + 1 + 5 + 10 + 7 = 28 sequence, a replay, and a fresh addition to 33. Phone/browser checks and owner acceptance remain pending under T031–T032; this automated evidence does not establish usability acceptance.
+
+## US 3 implementation verification
+
+On 2026-11-04, the student storage and HTTP tests passed against disposable local PostgreSQL databases. They covered preserved balances and registrations, repeated archive, retained edit input, explicit archive confirmation, read-only archived details and controlled row-lock ordering with additions and edits. Browser/device checks and owner acceptance remain pending under T031–T032.
+
+## Phase 6 evidence (2026-11-04)
+
+- `pnpm run build`: passed.
+- `TEST_DATABASE_URL=postgresql://… pnpm test`: 17 files and 64 tests passed against disposable local PostgreSQL, including schedule, class/capacity, student, restart/restore and deployment adapter regressions. The expected invalid-locale fallback message appeared in the schedule test.
+- `pnpm run test:deploy`: passed; the Netlify bundle included the student views and pending script, and its student form, validation and static script were served from the unpacked function without publishing.
+- Chrome responsive emulation at 320 px: creation form and long student name fit; the zero balance was visible. With 3G throttling, create, add, edit and archive each showed a disabled button and Spanish pending status; the final balance remained 5 after edit and the archive redirected to the list. At 390 px the student list and archive notice fit. Native browser validation blocked an empty required name without disabling the button. At 390 px, creation with JavaScript disabled saved an initial balance of 5. A simulated storage failure returned a usable form with the entered name and phone; after the test table was restored, retry succeeded, and a second activation while saving had no effect.
+- Browser verification remains incomplete (T031): the complete no-JavaScript edit/add/archive flow and the complete 28-to-33 balance sequence in the browser have not all been observed at both widths. The browser also returned to a submitted addition form with its button enabled and displayed retained errors for missing, zero, negative, fractional and nonnumeric custom counts. Existing automated tests cover additional cases, but do not replace the remaining browser exercise.
+- Owner acceptance SC-001–005 remains pending (T032): no owner-led session, physical phone, unassisted timings or owner feedback was available. No deployment was performed.
+
+The custom-count inputs were updated after the browser audit to associate validation errors with the input itself; a targeted HTTP regression test passed, followed by the full 64-test suite, build and packaged deployment smoke check.
